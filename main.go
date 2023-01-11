@@ -13,7 +13,63 @@ func main() {
 	// Ex1()
 	// Ex2()
 	// Ex3()
-	Ex4()
+	// Ex4()
+	Ex5()
+}
+
+// implements a fan in. multiple channels produce. one channel outputs all produces data
+func Ex5() {
+
+	// create a data generator
+	generator := func(everySecond int, id int) <-chan string {
+		c := make(chan string)
+		count := 0
+		go func() {
+			defer close(c)
+			for {
+				time.Sleep(time.Duration(everySecond) * time.Second)
+				c <- fmt.Sprintf("id=%d: %d", id, count)
+				count += 1
+				if count == 10 {
+					return
+				}
+
+			}
+
+		}()
+		return c
+	}
+
+	fanIn := func(sources ...<-chan string) <-chan string {
+		// this needs to be closed for readers not to block
+		// it should be closed after all sources are done sending data
+		output := make(chan string)
+		var wg sync.WaitGroup
+		for _, source := range sources {
+			wg.Add(1)
+			go func(source <-chan string) {
+				for value := range source {
+					output <- value
+				}
+				wg.Done()
+			}(source)
+		}
+
+		go func() {
+			wg.Wait()
+			close(output)
+		}()
+		return output
+	}
+
+	producer1 := generator(1, 1)
+	producer2 := generator(1, 2)
+
+	fannedIn := fanIn(producer1, producer2)
+
+	for readValue := range fannedIn {
+		fmt.Println(readValue)
+	}
 }
 
 // implementing a ticker
