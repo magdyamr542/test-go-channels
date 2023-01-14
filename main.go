@@ -14,7 +14,52 @@ func main() {
 	// Ex2()
 	// Ex3()
 	// Ex4()
-	Ex5()
+	// Ex5()
+	// Ex6()
+	Ex7()
+}
+
+// fixes the data race introduces in ex6
+func Ex7() {
+	done := make(chan struct{})
+	count := 0
+	var mu sync.Mutex
+	for i := 0; i < 4; i++ {
+		go func(id int) {
+			for i := 0; i < 2; i++ {
+				fmt.Println(id, "inc count")
+				mu.Lock()
+				count++
+				mu.Unlock()
+			}
+			done <- struct{}{}
+		}(i)
+	}
+	<-done
+	<-done
+	<-done
+	<-done
+	fmt.Println("count", count)
+}
+
+// shows a data race where two go routines try to write a variable without coordination
+func Ex6() {
+	done := make(chan struct{})
+	count := 0
+	for i := 0; i < 4; i++ {
+		go func(id int) {
+			for i := 0; i < 2; i++ {
+				fmt.Println(id, "inc count")
+				count++
+			}
+			done <- struct{}{}
+		}(i)
+	}
+	<-done
+	<-done
+	<-done
+	<-done
+	fmt.Println("count", count)
 }
 
 // implements a fan in. multiple channels produce. one channel outputs all produces data
