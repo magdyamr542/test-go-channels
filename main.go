@@ -16,7 +16,47 @@ func main() {
 	// Ex4()
 	// Ex5()
 	// Ex6()
-	Ex7()
+	// Ex7()
+	Ex8()
+}
+
+// example of rate limiting.
+// the number of requests handled within a given time range can't exceed a given limit
+func Ex8() {
+	requests := make(chan int)
+
+	requestsLimit := 3 // the max num of requests handled within requestsTime
+	requestsTime := time.Second * 1
+
+	quotas := make(chan struct{}) // to handle a request. you must have a quota.
+
+	go func() {
+		ticker := time.NewTicker(requestsTime / time.Duration(requestsLimit))
+		for range ticker.C {
+			fmt.Println("Tick...")
+			select {
+			case quotas <- struct{}{}:
+			default:
+				// request are dropped here because there is load on the resources
+				fmt.Println("Dropped")
+			}
+		}
+	}()
+
+	go func() {
+		for request := range requests {
+			<-quotas
+			// handle the request
+			go func(req int) {
+				fmt.Println("request", req)
+			}(request)
+		}
+	}()
+
+	for i := 0; ; i++ {
+		requests <- i
+	}
+
 }
 
 // fixes the data race introduces in ex6
